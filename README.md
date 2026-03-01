@@ -1,2 +1,2 @@
-# Forge
-Development Repo for Forge Application
+# Refinery
+AI Long Prose Enhancement Application

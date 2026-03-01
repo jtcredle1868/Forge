@@ -1,0 +1,275 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── AUTH ───────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  emailVerified     DateTime?
+  name              String?
+  image             String?
+  passwordHash      String?
+  authProvider      String    @default("credentials")
+  
+  // Preferences
+  genre             String?
+  writingGoals      String?
+  feedbackIntensity FeedbackIntensity @default(STANDARD)
+  
+  // Relations
+  accounts          Account[]
+  sessions          Session[]
+  projects          Project[]
+  aiInteractions    AIInteraction[]
+  subscription      Subscription?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── PROJECTS ───────────────────────────────────────────
+
+model Project {
+  id              String        @id @default(cuid())
+  userId          String
+  title           String
+  genre           String?
+  targetWordCount Int?
+  status          ProjectStatus @default(DRAFTING)
+  isArchived      Boolean       @default(false)
+  
+  styleProfile    StyleProfile?
+  chapters        Chapter[]
+  aiInteractions  AIInteraction[]
+  googleDriveSync GoogleDriveSync?
+  
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  orderIndex  Int
+  
+  scenes      Scene[]
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Scene {
+  id          String   @id @default(cuid())
+  chapterId   String
+  title       String
+  orderIndex  Int
+  
+  document    Document?
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Document {
+  id          String            @id @default(cuid())
+  sceneId     String            @unique
+  content     Json              // TipTap JSON
+  wordCount   Int               @default(0)
+  
+  versions    DocumentVersion[]
+  annotations Annotation[]
+  scene       Scene             @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  content     Json
+  wordCount   Int
+  snapshot    String?  // label e.g. "Manual save"
+  
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model Annotation {
+  id          String   @id @default(cuid())
+  documentId  String
+  fromPos     Int
+  toPos       Int
+  note        String
+  resolved    Boolean  @default(false)
+  
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// ─── STYLE PROFILE ──────────────────────────────────────
+
+model StyleProfile {
+  id           String   @id @default(cuid())
+  projectId    String   @unique
+  pov          POV      @default(THIRD_LIMITED)
+  tense        Tense    @default(PAST)
+  formality    Formality @default(LITERARY)
+  customRules  Json?    // Array of {rule: string, example: string}
+  
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── AI INTERACTIONS ────────────────────────────────────
+
+model AIInteraction {
+  id            String              @id @default(cuid())
+  userId        String
+  projectId     String?
+  documentId    String?
+  requestType   AIRequestType
+  requestText   String              @db.Text
+  responseText  String              @db.Text
+  feedbackIntensity FeedbackIntensity
+  dismissed     Boolean             @default(false)
+  acknowledged  Boolean             @default(false)
+  flagged       Boolean             @default(false)
+  
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project       Project?            @relation(fields: [projectId], references: [id])
+  
+  createdAt     DateTime            @default(now())
+}
+
+// ─── SUBSCRIPTIONS ──────────────────────────────────────
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  tier                 SubscriptionTier   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodEnd     DateTime?
+  
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  updatedAt            DateTime           @updatedAt
+}
+
+// ─── INTEGRATIONS ───────────────────────────────────────
+
+model GoogleDriveSync {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  driveFileId     String
+  driveFolderId   String?
+  lastSyncedAt    DateTime?
+  syncStatus      SyncStatus @default(IDLE)
+  
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ─── ENUMS ──────────────────────────────────────────────
+
+enum ProjectStatus {
+  DRAFTING
+  REVISING
+  COMPLETE
+  ON_HOLD
+}
+
+enum POV {
+  FIRST
+  SECOND
+  THIRD_LIMITED
+  THIRD_OMNISCIENT
+  MULTIPLE
+}
+
+enum Tense {
+  PAST
+  PRESENT
+  MIXED
+}
+
+enum Formality {
+  LITERARY
+  COMMERCIAL
+  GENRE
+  EXPERIMENTAL
+}
+
+enum FeedbackIntensity {
+  LIGHT_TOUCH
+  STANDARD
+  DEEP_DIVE
+}
+
+enum AIRequestType {
+  PASSAGE_ANALYSIS
+  CRAFT_QA
+  TEMPERATURE_CHECK
+  STYLE_CHECK
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  STUDIO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum SyncStatus {
+  IDLE
+  SYNCING
+  ERROR
+}
