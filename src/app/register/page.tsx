@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -23,8 +23,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
@@ -44,107 +44,97 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/dashboard");
-    } catch (err) {
+      router.push("/onboarding");
+    } catch {
       setError("Network error. Please try again.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-4">
-      <div className="w-full max-w-md bg-slate-800 rounded-lg shadow-xl p-8 border border-slate-700">
-        <h1 className="text-3xl font-bold text-white mb-2">The Forge</h1>
-        <p className="text-slate-400 mb-8">Create your account</p>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[300px] bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
-              Full Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="John Doe"
-              required
-            />
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image src="/forge-logo.svg" alt="The Forge" width={80} height={80} />
           </div>
+          <h1 className="text-3xl font-black text-white">The Forge</h1>
+          <p className="text-slate-400 text-sm mt-1">Where Perfect Prose Begins</p>
+        </div>
 
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="you@example.com"
-              required
-            />
-          </div>
+        <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700 p-8 shadow-2xl">
+          <h2 className="text-xl font-bold text-white mb-6">Create your account</h2>
 
-          <div className="mb-4">
-            <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-900 border border-red-700 rounded text-red-200 text-sm">
-              {error}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-1.5">Full Name</label>
+              <input
+                id="name" type="text" value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-700/60 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                placeholder="Jane Doe" required
+              />
             </div>
-          )}
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
-          >
-            {loading ? "Creating account..." : "Create Account"}
-          </Button>
-        </form>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1.5">Email address</label>
+              <input
+                id="email" type="email" value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-700/60 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                placeholder="you@example.com" required
+              />
+            </div>
 
-        <div className="mt-6 text-center text-slate-400">
-          Already have an account?{" "}
-          <Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium">
-            Sign in
-          </Link>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+              <input
+                id="password" type="password" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-700/60 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                placeholder="At least 8 characters" required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-1.5">Confirm Password</label>
+              <input
+                id="confirmPassword" type="password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-700/60 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                placeholder="••••••••" required
+              />
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>
+            )}
+
+            <button
+              type="submit" disabled={loading}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all mt-2"
+              style={{ boxShadow: "0 0 20px rgba(59,130,246,0.3)" }}
+            >
+              {loading ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-xs text-slate-500">
+            By creating an account you agree to our Terms of Service. Your manuscript content is never used for AI model training.
+          </p>
+
+          <p className="mt-4 text-center text-sm text-slate-400">
+            Already have an account?{" "}
+            <Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium">Sign in</Link>
+          </p>
         </div>
 
-        <div className="mt-4 text-center text-slate-500 text-sm">
-          <Link href="/" className="text-slate-400 hover:text-slate-300">
-            Back to home
-          </Link>
-        </div>
+        <p className="mt-6 text-center text-xs text-slate-500">
+          <Link href="/" className="hover:text-slate-400 transition-colors">← Back to home</Link>
+        </p>
       </div>
     </div>
   );

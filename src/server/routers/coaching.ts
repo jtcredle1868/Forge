@@ -3,8 +3,7 @@ import { z } from "zod";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 import { db } from "../db";
 import { TRPCError } from "@trpc/server";
-import { buildPassageAnalysisPrompt } from "../services/aiCoachingService";
-import { analyzePassageWithClaude } from "../services/aiCoachingService";
+import { buildPassageAnalysisPrompt, analyzePassageWithClaude, calculateTemperatureMetrics } from "../services/aiCoachingService";
 
 const focusAreasEnum = z.enum([
   "SENTENCE_RHYTHM",
@@ -193,22 +192,39 @@ Provide a thoughtful response that helps the author think about their craft. Obs
         });
       }
 
-      // Calculate metrics from all scenes in chapter
-      const metrics = {
-        totalWords: 0,
-        sentenceCount: 0,
-        paragraphCount: 0,
-      };
+      // Aggregate all text in chapter
+      const allText = chapter.scenes
+        .map((scene) => {
+          const content = scene.document?.content;
+          if (!content) return "";
+          if (typeof content === "string") return content;
+          if (typeof content === "object" && "content" in (content as object)) {
+            return (content as { content: string }).content ?? "";
+          }
+          return "";
+        })
+        .join("\n\n");
 
-      chapter.scenes.forEach((scene) => {
-        if (scene.document?.wordCount) {
-          metrics.totalWords += scene.document.wordCount;
-        }
-      });
+      const raw = calculateTemperatureMetrics(allText);
+
+      const metrics = {
+        totalWords: raw.wordCount,
+        sentenceCount: raw.sentenceCount,
+        paragraphCount: raw.paragraphCount,
+        avgWordsPerSentence: raw.avgWordsPerSentence,
+        shortSentenceRatio: raw.shortSentenceRatio,
+        longSentenceRatio: raw.longSentenceRatio,
+        passiveVoiceRatio: raw.passiveVoiceEstimate,
+        dialogueRatio: raw.dialogueRatio,
+        uniqueWordRatio: raw.uniqueWordRatio,
+        sentenceLengthVariance: raw.sentenceLengthVariance,
+      };
 
       return {
         metrics,
-        analysis: "Temperature check requires AI analysis - call analyzeTemperature",
+        interpretation: allText.trim().length < 100
+          ? null
+          : `This chapter has ${metrics.totalWords.toLocaleString()} words across ${metrics.sentenceCount} sentences and ${metrics.paragraphCount} paragraphs. Average sentence length is ${metrics.avgWordsPerSentence.toFixed(1)} words. ${metrics.shortSentenceRatio > 0.4 ? "You use a high proportion of short sentences, which can create punch and urgency. " : ""}${metrics.longSentenceRatio > 0.3 ? "Many long sentences suggest complex, layered prose. Watch for reader fatigue. " : ""}Lexical diversity is ${(metrics.uniqueWordRatio * 100).toFixed(0)}% — higher values suggest a rich vocabulary; lower values may indicate repetition.`,
       };
     }),
 

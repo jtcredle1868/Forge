@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="flaskGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2d5a8e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="crystalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#ef4444;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0.6" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Flask body -->
+  <path d="M75 55 L75 90 L45 140 Q40 150 50 158 L150 158 Q160 150 155 140 L125 90 L125 55 Z"
+        fill="url(#flaskGrad)" stroke="#3b82f6" stroke-width="2"/>
+
+  <!-- Flask neck -->
+  <rect x="72" y="40" width="56" height="20" rx="4" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <!-- Flask liquid/waves -->
+  <path d="M50 140 Q70 132 100 138 Q130 144 150 140 L155 150 Q145 158 100 155 Q55 158 45 150 Z"
+        fill="url(#waveGrad)" opacity="0.8"/>
+  <path d="M48 148 Q75 140 100 146 Q125 152 152 148"
+        fill="none" stroke="#60a5fa" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Book inside flask -->
+  <g transform="translate(72, 100)">
+    <!-- Book cover -->
+    <rect x="0" y="0" width="56" height="42" rx="3" fill="#1e40af" opacity="0.9"/>
+    <!-- Spine -->
+    <rect x="26" y="0" width="4" height="42" fill="#1d4ed8" opacity="0.9"/>
+    <!-- Pages left -->
+    <path d="M4 4 Q26 6 26 21 Q26 36 4 38" fill="#dbeafe" opacity="0.9"/>
+    <!-- Pages right -->
+    <path d="M52 4 Q30 6 30 21 Q30 36 52 38" fill="#bfdbfe" opacity="0.9"/>
+    <!-- Lines on pages -->
+    <line x1="8" y1="12" x2="24" y2="13" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+    <line x1="8" y1="17" x2="23" y2="18" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+    <line x1="8" y1="22" x2="22" y2="23" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+    <line x1="8" y1="27" x2="24" y2="28" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+    <line x1="32" y1="12" x2="48" y2="13" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+    <line x1="32" y1="17" x2="47" y2="18" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+    <line x1="32" y1="22" x2="48" y2="23" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>
+  </g>
+
+  <!-- Crystal/flame on top -->
+  <g filter="url(#glow)">
+    <polygon points="100,8 88,28 100,22 112,28" fill="url(#crystalGrad)" opacity="0.95"/>
+    <polygon points="100,12 90,28 100,24 110,28" fill="url(#crystalGrad)" opacity="0.7"/>
+    <!-- Flame sparks -->
+    <circle cx="88" cy="20" r="3" fill="#f59e0b" opacity="0.8"/>
+    <circle cx="112" cy="22" r="2.5" fill="#ef4444" opacity="0.8"/>
+    <circle cx="100" cy="10" r="2" fill="#8b5cf6" opacity="0.9"/>
+  </g>
+
+  <!-- Shine on flask -->
+  <path d="M82 65 Q78 75 80 90" fill="none" stroke="white" stroke-width="1.5" opacity="0.3"/>
+</svg>

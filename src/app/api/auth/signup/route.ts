@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { createSession } from "@/lib/session";
 
@@ -13,28 +14,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "User already exists" },
+        { error: "Password must be at least 8 characters" },
         { status: 400 }
       );
     }
 
-    // Create new user (in MVP, store plain password - not recommended for production)
+    const existingUser = await db.user.findUnique({ where: { email } });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 400 }
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
     const user = await db.user.create({
       data: {
         email,
         name,
-        passwordHash: password, // In production, hash this with bcrypt
+        passwordHash,
       },
     });
 
-    // Create session
+    // Create free subscription
+    await db.subscription.create({
+      data: {
+        userId: user.id,
+        stripeCustomerId: `free_${user.id}`,
+        tier: "FREE",
+        status: "ACTIVE",
+      },
+    });
+
     await createSession(user);
 
     return NextResponse.json(
