@@ -102,6 +102,7 @@ export default async function SceneWorkspacePage({
     await db.documentVersion.create({
       data: {
         documentId: existingDocument.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         content: existingDocument.content as any,
         wordCount: existingDocument.wordCount,
         snapshot: "Manual save",
@@ -151,6 +152,7 @@ export default async function SceneWorkspacePage({
     await db.document.update({
       where: { id: version.documentId },
       data: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         content: version.content as any,
         wordCount: version.wordCount,
       },

@@ -9,7 +9,7 @@ interface ForgeEditorProps {
   sceneId: string;
 }
 
-export function ForgeEditor({ content, onSave, sceneId }: ForgeEditorProps) {
+export function ForgeEditor({ sceneId }: ForgeEditorProps) {
   return (
     <div className="w-full h-full bg-white rounded-lg border border-gray-200 p-6">
       <div className="text-center text-gray-500">

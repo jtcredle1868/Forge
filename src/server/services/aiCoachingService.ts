@@ -69,7 +69,7 @@ Remember: observe only, never rewrite.`;
 export async function analyzePassageWithClaude(prompt: string): Promise<string> {
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-6b",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [
         {

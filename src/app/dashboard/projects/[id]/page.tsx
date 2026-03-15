@@ -170,12 +170,14 @@ export default async function ProjectWorkspacePage({
         pov,
         tense,
         formality,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(customRules ? { customRules: customRules as any } : {}),
       },
       update: {
         pov,
         tense,
         formality,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(customRules ? { customRules: customRules as any } : {}),
       },
     });

@@ -11,12 +11,11 @@ interface CoachingPanelProps {
 }
 
 export function CoachingPanel({
-  projectId,
   documentId,
   selectedText,
 }: CoachingPanelProps) {
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<string | null>(null);
+  const [response] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
     if (!selectedText) return;

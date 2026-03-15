@@ -2,7 +2,6 @@
 import { z } from "zod";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 import { db } from "../db";
-import { TRPCError } from "@trpc/server";
 
 export const billingRouter = createTRPCRouter({
   getSubscription: protectedProcedure.query(async ({ ctx }) => {

@@ -87,6 +87,7 @@ export const documentsRouter = createTRPCRouter({
       await db.documentVersion.create({
         data: {
           documentId: document.id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           content: document.content as any,
           wordCount: document.wordCount,
         },
@@ -96,6 +97,7 @@ export const documentsRouter = createTRPCRouter({
       return db.document.update({
         where: { id: document.id },
         data: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           content: input.content as any,
           wordCount: countWords(JSON.stringify(input.content)),
         },
@@ -179,6 +181,7 @@ export const documentsRouter = createTRPCRouter({
       return db.document.update({
         where: { id: version.documentId },
         data: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           content: version.content as any,
           wordCount: version.wordCount,
         },
