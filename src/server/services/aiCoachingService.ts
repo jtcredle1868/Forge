@@ -2,7 +2,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { FeedbackIntensity } from "@prisma/client";
 
-const client = new Anthropic();
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 // CRITICAL: This constraint block must be present in every coaching prompt
 const COACH_CONSTRAINT =
@@ -68,8 +70,8 @@ Remember: observe only, never rewrite.`;
 
 export async function analyzePassageWithClaude(prompt: string): Promise<string> {
   try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6b",
+    const message = await getClient().messages.create({
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [
         {
