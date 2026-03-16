@@ -19,19 +19,19 @@ model User {
   image             String?
   passwordHash      String?
   authProvider      String    @default("credentials")
-  
+
   // Preferences
   genre             String?
   writingGoals      String?
   feedbackIntensity FeedbackIntensity @default(STANDARD)
-  
+
   // Relations
   accounts          Account[]
   sessions          Session[]
   projects          Project[]
   aiInteractions    AIInteraction[]
   subscription      Subscription?
-  
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
@@ -50,7 +50,7 @@ model Account {
   id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@unique([provider, providerAccountId])
 }
 
@@ -69,17 +69,23 @@ model Project {
   userId          String
   title           String
   genre           String?
+  subgenre        String?
   targetWordCount Int?
   status          ProjectStatus @default(DRAFTING)
   isArchived      Boolean       @default(false)
-  
+  synopsis        String?       @db.Text
+  coverColor      String?       // Hex color for visual identity
+
   styleProfile    StyleProfile?
   chapters        Chapter[]
+  characters      Character[]
+  worldElements   WorldElement[]
+  relationshipDynamics RelationshipDynamic[]
   aiInteractions  AIInteraction[]
   googleDriveSync GoogleDriveSync?
-  
+
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -89,25 +95,32 @@ model Chapter {
   projectId   String
   title       String
   orderIndex  Int
-  
+  summary     String?  @db.Text
+
   scenes      Scene[]
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Scene {
-  id          String   @id @default(cuid())
-  chapterId   String
-  title       String
-  orderIndex  Int
-  
-  document    Document?
-  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String         @id @default(cuid())
+  chapterId        String
+  title            String
+  orderIndex       Int
+  summary          String?        @db.Text
+  sceneType        SceneType      @default(NARRATIVE)
+  paceRating       Int?           // 1-10, author-set
+
+  document         Document?
+  emotionalScore   EmotionalScore?
+  appearances      CharacterAppearance[]
+  chapter          Chapter        @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  voiceChecks      DialogueVoiceCheck[]
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model Document {
@@ -115,11 +128,11 @@ model Document {
   sceneId     String            @unique
   content     Json              // TipTap JSON
   wordCount   Int               @default(0)
-  
+
   versions    DocumentVersion[]
   annotations Annotation[]
   scene       Scene             @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  
+
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 }
@@ -130,7 +143,7 @@ model DocumentVersion {
   content     Json
   wordCount   Int
   snapshot    String?  // label e.g. "Manual save"
-  
+
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 }
@@ -142,7 +155,7 @@ model Annotation {
   toPos       Int
   note        String
   resolved    Boolean  @default(false)
-  
+
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 }
@@ -150,37 +163,192 @@ model Annotation {
 // ─── STYLE PROFILE ──────────────────────────────────────
 
 model StyleProfile {
-  id           String   @id @default(cuid())
-  projectId    String   @unique
-  pov          POV      @default(THIRD_LIMITED)
-  tense        Tense    @default(PAST)
+  id           String    @id @default(cuid())
+  projectId    String    @unique
+  pov          POV       @default(THIRD_LIMITED)
+  tense        Tense     @default(PAST)
   formality    Formality @default(LITERARY)
-  customRules  Json?    // Array of {rule: string, example: string}
-  
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  updatedAt    DateTime @updatedAt
+  customRules  Json?     // Array of {rule: string, example: string}
+
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  updatedAt    DateTime  @updatedAt
+}
+
+// ─── CHARACTER SYSTEM ────────────────────────────────────
+
+model Character {
+  id                String              @id @default(cuid())
+  projectId         String
+  name              String
+  role              CharacterRole       @default(SUPPORTING)
+  age               Int?
+  background        String?             @db.Text
+  motivation        String?             @db.Text
+  internalConflict  String?             @db.Text
+  externalConflict  String?             @db.Text
+
+  // Voice profile for "Would They Say That?"
+  educationLevel    EducationLevel?
+  region            String?
+  socialClass       String?
+  speakingStyle     String?             @db.Text
+  vocabularyNotes   String?             @db.Text
+  verbalTics        String?             @db.Text
+  sampleDialogue    String?             @db.Text   // Authentic sample provided by author
+
+  // Character arc
+  startingState     String?             @db.Text   // Where they begin
+  endGoalState      String?             @db.Text   // Where they should end
+  arcNotes          String?             @db.Text
+
+  // Visual
+  avatarColor       String?             // Hex color for character in timeline
+
+  traits            CharacterTrait[]
+  arcMilestones     CharacterArcMilestone[]
+  appearances       CharacterAppearance[]
+  voiceChecks       DialogueVoiceCheck[]
+  relationshipsAsA  RelationshipDynamic[] @relation("CharacterA")
+  relationshipsAsB  RelationshipDynamic[] @relation("CharacterB")
+
+  project           Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+
+model CharacterTrait {
+  id            String    @id @default(cuid())
+  characterId   String
+  trait         String
+  isStrength    Boolean   @default(true)
+
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+model CharacterArcMilestone {
+  id              String    @id @default(cuid())
+  characterId     String
+  chapterId       String?
+  sceneId         String?
+  title           String
+  description     String    @db.Text
+  orderIndex      Int
+  isCompleted     Boolean   @default(false)
+
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+}
+
+model CharacterAppearance {
+  id            String    @id @default(cuid())
+  characterId   String
+  sceneId       String
+  appearanceRole String?  // "protagonist", "antagonist", "witness", "cameo"
+  notes         String?
+
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  scene         Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, sceneId])
+}
+
+model RelationshipDynamic {
+  id                String    @id @default(cuid())
+  projectId         String
+  characterAId      String
+  characterBId      String
+  relationshipType  String    // "romantic", "antagonistic", "mentor", "sibling", etc.
+  currentStage      String?   // Where they are in relationship arc
+  tensionScore      Float     @default(5)  // 0-10
+  connectionScore   Float     @default(5)  // 0-10
+  notes             String?   @db.Text
+
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  characterA        Character @relation("CharacterA", fields: [characterAId], references: [id], onDelete: Cascade)
+  characterB        Character @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+
+  updatedAt         DateTime  @updatedAt
+}
+
+// ─── DIALOGUE VOICE CHECK ("WOULD THEY SAY THAT?") ──────
+
+model DialogueVoiceCheck {
+  id                String    @id @default(cuid())
+  characterId       String
+  sceneId           String?
+  selectedText      String    @db.Text
+  authenticityScore Float     // 0-100
+  observations      String    @db.Text    // JSON stringified array of observations
+  suggestions       String?   @db.Text    // JSON stringified guidance
+  craftQuestions    String?   @db.Text    // Questions for the author
+  isAuthentic       Boolean
+
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  scene             Scene?    @relation(fields: [sceneId], references: [id])
+
+  createdAt         DateTime  @default(now())
+}
+
+// ─── EMOTIONAL SCORING ───────────────────────────────────
+
+model EmotionalScore {
+  id                String    @id @default(cuid())
+  sceneId           String    @unique
+  tensionScore      Float     @default(0)    // 0-10
+  romanceScore      Float     @default(0)    // 0-10
+  actionScore       Float     @default(0)    // 0-10
+  hopeScore         Float     @default(0)    // 0-10
+  fearScore         Float     @default(0)    // 0-10
+  sadnessScore      Float     @default(0)    // 0-10
+  joyScore          Float     @default(0)    // 0-10
+  overallIntensity  Float     @default(0)    // 0-10
+  dominantEmotion   String    @default("neutral")
+  aiSummary         String?   @db.Text
+
+  scene             Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  analyzedAt        DateTime  @default(now())
+}
+
+// ─── WORLD BUILDING ──────────────────────────────────────
+
+model WorldElement {
+  id            String          @id @default(cuid())
+  projectId     String
+  type          WorldElementType
+  name          String
+  description   String?         @db.Text
+  properties    Json?           // Flexible properties based on element type
+  tags          String[]        // Searchable tags
+  coverColor    String?         // Visual color coding
+  orderIndex    Int             @default(0)
+
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 }
 
 // ─── AI INTERACTIONS ────────────────────────────────────
 
 model AIInteraction {
-  id            String              @id @default(cuid())
-  userId        String
-  projectId     String?
-  documentId    String?
-  requestType   AIRequestType
-  requestText   String              @db.Text
-  responseText  String              @db.Text
+  id                String              @id @default(cuid())
+  userId            String
+  projectId         String?
+  documentId        String?
+  requestType       AIRequestType
+  requestText       String              @db.Text
+  responseText      String              @db.Text
   feedbackIntensity FeedbackIntensity
-  dismissed     Boolean             @default(false)
-  acknowledged  Boolean             @default(false)
-  flagged       Boolean             @default(false)
-  
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project       Project?            @relation(fields: [projectId], references: [id])
-  
-  createdAt     DateTime            @default(now())
+  dismissed         Boolean             @default(false)
+  acknowledged      Boolean             @default(false)
+  flagged           Boolean             @default(false)
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project           Project?            @relation(fields: [projectId], references: [id])
+
+  createdAt         DateTime            @default(now())
 }
 
 // ─── SUBSCRIPTIONS ──────────────────────────────────────
@@ -193,23 +361,23 @@ model Subscription {
   tier                 SubscriptionTier   @default(FREE)
   status               SubscriptionStatus @default(ACTIVE)
   currentPeriodEnd     DateTime?
-  
+
   user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   updatedAt            DateTime           @updatedAt
 }
 
 // ─── INTEGRATIONS ───────────────────────────────────────
 
 model GoogleDriveSync {
-  id              String   @id @default(cuid())
-  projectId       String   @unique
+  id              String     @id @default(cuid())
+  projectId       String     @unique
   driveFileId     String
   driveFolderId   String?
   lastSyncedAt    DateTime?
   syncStatus      SyncStatus @default(IDLE)
-  
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 // ─── ENUMS ──────────────────────────────────────────────
@@ -219,6 +387,14 @@ enum ProjectStatus {
   REVISING
   COMPLETE
   ON_HOLD
+}
+
+enum SceneType {
+  NARRATIVE
+  DIALOGUE
+  ACTION
+  INTROSPECTION
+  TRANSITION
 }
 
 enum POV {
@@ -253,6 +429,9 @@ enum AIRequestType {
   CRAFT_QA
   TEMPERATURE_CHECK
   STYLE_CHECK
+  VOICE_CHECK
+  EMOTIONAL_SCORE
+  CHARACTER_ARC_CHECK
 }
 
 enum SubscriptionTier {
@@ -272,4 +451,57 @@ enum SyncStatus {
   IDLE
   SYNCING
   ERROR
+}
+
+enum CharacterRole {
+  PROTAGONIST
+  ANTAGONIST
+  SUPPORTING
+  MINOR
+  MENTOR
+  LOVE_INTEREST
+}
+
+enum EducationLevel {
+  NONE
+  ELEMENTARY
+  HIGH_SCHOOL
+  SOME_COLLEGE
+  BACHELORS
+  GRADUATE
+  DOCTORAL
+  SELF_TAUGHT
+}
+
+enum WorldElementType {
+  // Romance
+  SETTING
+  RELATIONSHIP_MILESTONE
+  TROPE
+  CONFLICT
+
+  // Thriller
+  PLOT_THREAD
+  CLUE
+  RED_HERRING
+  REVELATION
+  ANTAGONIST_ASSET
+  STAKES
+
+  // Fantasy (visual/locked for MVP)
+  MAGIC_RULE
+  FACTION
+  WORLD_HISTORY
+  ARTIFACT
+
+  // Sci-Fi (visual/locked for MVP)
+  TECHNOLOGY
+  POLITICAL_SYSTEM
+  SPECIES
+  SCIENCE_RULE
+
+  // Universal
+  LOCATION
+  TIMELINE_EVENT
+  THEME
 }

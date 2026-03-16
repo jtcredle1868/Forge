@@ -1,60 +1,276 @@
-/* src/styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    --bg-primary: #0c0c14;
+    --bg-secondary: #13131f;
+    --bg-card: #1a1a2e;
+    --bg-hover: #1f1f35;
+    --border: #2a2a45;
+    --border-light: #35354a;
+    --text-primary: #f0f0f8;
+    --text-secondary: #9898b8;
+    --text-muted: #5a5a7a;
+    --accent-amber: #f59e0b;
+    --accent-amber-dark: #d97706;
+    --accent-blue: #3b82f6;
+    --accent-blue-dark: #2563eb;
+    --accent-emerald: #10b981;
+    --accent-red: #ef4444;
+    --accent-pink: #ec4899;
+    --accent-purple: #8b5cf6;
     --foreground: 0 0% 3.6%;
     --background: 0 0% 100%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.6%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.6%;
     --muted: 0 0% 96.1%;
     --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 9.0%;
-    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 89.8%;
+    --border-shadcn: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --primary: 0 0% 9.0%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9.0%;
     --ring: 0 0% 3.6%;
+    --radius: 0.5rem;
   }
 
-  .dark {
-    --foreground: 0 0% 98%;
-    --background: 0 0% 3.6%;
-    --card: 0 0% 3.6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.6%;
-    --popover-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 98%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --ring: 0 0% 83.3%;
-  }
-}
-
-@layer base {
   * {
-    @apply border-border;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-amber);
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(26, 26, 46, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(42, 42, 69, 0.9);
+    border-radius: 12px;
+  }
+
+  .forge-gradient-text {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .wow-badge {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .authenticity-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .authenticity-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .scene-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .scene-card:hover {
+    transform: translateY(-2px);
+  }
+
+  /* TipTap editor */
+  .forge-editor {
+    outline: none;
+    min-height: 400px;
+    line-height: 1.8;
+    font-size: 16px;
+    caret-color: #f59e0b;
+    color: #f0f0f8;
+  }
+
+  .forge-editor p {
+    margin-bottom: 1em;
+    color: #f0f0f8;
+  }
+
+  .forge-editor p.is-editor-empty:first-child::before {
+    color: #5a5a7a;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .forge-editor h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #f0f0f8;
+    margin: 1.5em 0 0.5em;
+  }
+
+  .forge-editor h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #f0f0f8;
+    margin: 1.25em 0 0.5em;
+  }
+
+  .forge-editor h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #9898b8;
+    margin: 1em 0 0.4em;
+  }
+
+  .forge-editor strong {
+    color: #f0f0f8;
+    font-weight: 700;
+  }
+
+  .forge-editor em {
+    color: #c8c8e0;
+    font-style: italic;
+  }
+
+  .forge-editor blockquote {
+    border-left: 3px solid #f59e0b;
+    padding-left: 1.5em;
+    margin: 1.5em 0;
+    color: #9898b8;
+    font-style: italic;
+  }
+
+  .forge-editor mark {
+    background: rgba(245, 158, 11, 0.2);
+    border-radius: 2px;
+    padding: 0 2px;
+    color: #f59e0b;
+  }
+
+  .forge-editor ul, .forge-editor ol {
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+    color: #f0f0f8;
+  }
+
+  .forge-editor li {
+    margin-bottom: 0.25em;
+  }
+
+  .forge-editor code {
+    background: rgba(42, 42, 69, 0.8);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "Fira Code", "Courier New", monospace;
+    font-size: 0.9em;
+    color: #f59e0b;
+  }
+
+  .forge-editor hr {
+    border: none;
+    border-top: 1px solid #2a2a45;
+    margin: 2em 0;
+  }
+}
+
+@layer utilities {
+  .text-forge-amber {
+    color: #f59e0b;
+  }
+
+  .text-forge-secondary {
+    color: #9898b8;
+  }
+
+  .text-forge-muted {
+    color: #5a5a7a;
+  }
+
+  .bg-forge-primary {
+    background-color: #0c0c14;
+  }
+
+  .bg-forge-secondary {
+    background-color: #13131f;
+  }
+
+  .bg-forge-card {
+    background-color: #1a1a2e;
+  }
+
+  .border-forge {
+    border-color: #2a2a45;
+  }
+
+  .border-forge-light {
+    border-color: #35354a;
+  }
+
+  .transition-forge {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Focus mode */
+.focus-mode-editor {
+  max-width: 65ch;
+  width: 100%;
+  font-size: 18px;
+  line-height: 2;
+  margin: 0 auto;
+}
+
+/* Loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #1a1a2e 25%, #252540 50%, #1a1a2e 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

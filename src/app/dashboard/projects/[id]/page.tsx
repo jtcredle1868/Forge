@@ -1,361 +1,142 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { db } from "@/server/db";
 import { getSession } from "@/lib/session";
-import { Button } from "@/components/ui/button";
+import { db } from "@/server/db";
+import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
+import {
+  BookOpen, Film, Users, Globe, Zap,
+  ArrowRight, Plus, Flame, Settings, BarChart3
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
-function startOfToday() {
-  const value = new Date();
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
+const STATUS_COLORS: Record<string, string> = {
+  DRAFTING: "#3b82f6",
+  REVISING: "#f59e0b",
+  COMPLETE: "#10b981",
+  ON_HOLD: "#5a5a7a",
+};
 
-function startOfMonth() {
-  const value = new Date();
-  value.setDate(1);
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
-
-export default async function ProjectWorkspacePage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ProjectPage({ params }: { params: { id: string } }) {
   const session = await getSession();
-  if (!session) {
-    redirect("/login");
-  }
-
-  const projectId = params.id;
+  if (!session) redirect("/login");
 
   const project = await db.project.findUnique({
-    where: { id: projectId },
+    where: { id: params.id, userId: session.userId },
     include: {
-      styleProfile: true,
-      googleDriveSync: true,
       chapters: {
+        orderBy: { orderIndex: "asc" },
         include: {
           scenes: {
-            include: {
-              document: true,
-            },
             orderBy: { orderIndex: "asc" },
+            include: {
+              document: { select: { wordCount: true } },
+              emotionalScore: { select: { dominantEmotion: true } },
+            },
           },
         },
-        orderBy: { orderIndex: "asc" },
       },
+      characters: { select: { id: true, name: true, role: true, avatarColor: true } },
+      worldElements: { select: { id: true } },
+      _count: { select: { aiInteractions: true } },
     },
   });
 
-  if (!project || project.userId !== session.userId) {
-    notFound();
-  }
+  if (!project) notFound();
 
-  const subscription = await db.subscription.findUnique({
-    where: { userId: session.userId },
-  });
+  const totalWords = project.chapters
+    .flatMap((ch) => ch.scenes.map((sc) => sc.document?.wordCount ?? 0))
+    .reduce((a, b) => a + b, 0);
+  const sceneCount = project.chapters.reduce((a, ch) => a + ch.scenes.length, 0);
+  const analyzedScenes = project.chapters.flatMap((ch) => ch.scenes.filter((sc) => sc.emotionalScore)).length;
+  const firstScene = project.chapters[0]?.scenes[0];
+  const statusColor = STATUS_COLORS[project.status] ?? "#5a5a7a";
 
-  const dailyUsage = await db.aIInteraction.count({
-    where: {
-      userId: session.userId,
-      createdAt: { gte: startOfToday() },
-    },
-  });
-
-  const monthlyUsage = await db.aIInteraction.count({
-    where: {
-      userId: session.userId,
-      createdAt: { gte: startOfMonth() },
-    },
-  });
-
-  async function addChapterAction(formData: FormData) {
-    "use server";
-    const activeSession = await getSession();
-    if (!activeSession) redirect("/login");
-
-    const title = String(formData.get("title") || "").trim();
-    if (!title) return;
-
-    const ownedProject = await db.project.findUnique({ where: { id: projectId } });
-    if (!ownedProject || ownedProject.userId !== activeSession.userId) return;
-
-    const count = await db.chapter.count({ where: { projectId } });
-    await db.chapter.create({
-      data: {
-        projectId,
-        title,
-        orderIndex: count,
-      },
-    });
-
-    revalidatePath(`/dashboard/projects/${projectId}`);
-  }
-
-  async function addSceneAction(formData: FormData) {
-    "use server";
-    const activeSession = await getSession();
-    if (!activeSession) redirect("/login");
-
-    const chapterId = String(formData.get("chapterId") || "");
-    const title = String(formData.get("title") || "").trim();
-    if (!chapterId || !title) return;
-
-    const chapter = await db.chapter.findUnique({
-      where: { id: chapterId },
-      include: { project: true },
-    });
-    if (!chapter || chapter.project.userId !== activeSession.userId) return;
-
-    const orderIndex = await db.scene.count({ where: { chapterId } });
-    const scene = await db.scene.create({
-      data: {
-        chapterId,
-        title,
-        orderIndex,
-      },
-    });
-
-    await db.document.create({
-      data: {
-        sceneId: scene.id,
-        content: { type: "plain", content: "" },
-        wordCount: 0,
-      },
-    });
-
-    revalidatePath(`/dashboard/projects/${projectId}`);
-  }
-
-  async function saveStyleAction(formData: FormData) {
-    "use server";
-    const activeSession = await getSession();
-    if (!activeSession) redirect("/login");
-
-    const ownedProject = await db.project.findUnique({ where: { id: projectId } });
-    if (!ownedProject || ownedProject.userId !== activeSession.userId) return;
-
-    const pov = String(formData.get("pov") || "THIRD_LIMITED") as
-      | "FIRST"
-      | "SECOND"
-      | "THIRD_LIMITED"
-      | "THIRD_OMNISCIENT"
-      | "MULTIPLE";
-
-    const tense = String(formData.get("tense") || "PAST") as
-      | "PAST"
-      | "PRESENT"
-      | "MIXED";
-
-    const formality = String(formData.get("formality") || "LITERARY") as
-      | "LITERARY"
-      | "COMMERCIAL"
-      | "GENRE"
-      | "EXPERIMENTAL";
-
-    const customRulesText = String(formData.get("customRules") || "").trim();
-    const customRules = customRulesText
-      ? customRulesText
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean)
-      : undefined;
-
-    await db.styleProfile.upsert({
-      where: { projectId },
-      create: {
-        projectId,
-        pov,
-        tense,
-        formality,
-        ...(customRules ? { customRules: customRules as any } : {}),
-      },
-      update: {
-        pov,
-        tense,
-        formality,
-        ...(customRules ? { customRules: customRules as any } : {}),
-      },
-    });
-
-    revalidatePath(`/dashboard/projects/${projectId}`);
-  }
-
-  async function connectSyncAction() {
-    "use server";
-    const activeSession = await getSession();
-    if (!activeSession) redirect("/login");
-
-    const ownedProject = await db.project.findUnique({ where: { id: projectId } });
-    if (!ownedProject || ownedProject.userId !== activeSession.userId) return;
-
-    await db.googleDriveSync.upsert({
-      where: { projectId },
-      create: {
-        projectId,
-        driveFileId: `drive-${projectId}`,
-        syncStatus: "IDLE",
-      },
-      update: {
-        syncStatus: "IDLE",
-      },
-    });
-
-    revalidatePath(`/dashboard/projects/${projectId}`);
-  }
-
-  async function syncNowAction() {
-    "use server";
-    const activeSession = await getSession();
-    if (!activeSession) redirect("/login");
-
-    const ownedProject = await db.project.findUnique({ where: { id: projectId } });
-    if (!ownedProject || ownedProject.userId !== activeSession.userId) return;
-
-    await db.googleDriveSync.updateMany({
-      where: { projectId },
-      data: {
-        syncStatus: "IDLE",
-        lastSyncedAt: new Date(),
-      },
-    });
-
-    revalidatePath(`/dashboard/projects/${projectId}`);
-  }
+  const navCards = [
+    { href: firstScene ? `/dashboard/projects/${project.id}/write/${firstScene.id}` : "#", icon: <BookOpen size={22} />, label: "Write", desc: "Open manuscript editor", color: "#3b82f6", stat: `${totalWords.toLocaleString()} words`, cta: "Open Editor" },
+    { href: `/dashboard/projects/${project.id}/timeline`, icon: <Film size={22} />, label: "Timeline", desc: "Visual story structure", color: "#f59e0b", stat: `${sceneCount} scenes`, cta: "View Timeline" },
+    { href: `/dashboard/projects/${project.id}/characters`, icon: <Users size={22} />, label: "Characters", desc: "Profiles & voice checking", color: "#ec4899", stat: `${project.characters.length} characters`, cta: "Manage Characters" },
+    { href: `/dashboard/projects/${project.id}/world`, icon: <Globe size={22} />, label: "World Builder", desc: project.genre ?? "Genre not set", color: "#10b981", stat: `${project.worldElements.length} elements`, cta: "Build World" },
+    { href: `/dashboard/projects/${project.id}/arc`, icon: <BarChart3 size={22} />, label: "Emotional Arc", desc: "Scene emotion analysis", color: "#8b5cf6", stat: `${analyzedScenes}/${sceneCount} analyzed`, cta: "View Arc" },
+    { href: `/dashboard/projects/${project.id}/coach`, icon: <Zap size={22} />, label: "Coaching", desc: "AI prose coaching history", color: "#f97316", stat: `${project._count.aiInteractions} sessions`, cta: "View Coaching" },
+  ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-start gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{project.title}</h1>
-          <p className="text-gray-600 mt-2">
-            Genre: {project.genre || "Not set"} · Target words: {project.targetWordCount || "—"}
-          </p>
-        </div>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/projects">Back to Projects</Link>
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h2 className="text-lg font-semibold text-gray-900">Billing / Usage</h2>
-          <p className="text-sm text-gray-600 mt-3">Tier: {subscription?.tier || "FREE"}</p>
-          <p className="text-sm text-gray-600">Daily AI calls: {dailyUsage}</p>
-          <p className="text-sm text-gray-600">Monthly AI calls: {monthlyUsage}</p>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h2 className="text-lg font-semibold text-gray-900">Google Drive Sync</h2>
-          <p className="text-sm text-gray-600 mt-3">
-            Status: {project.googleDriveSync?.syncStatus || "DISCONNECTED"}
-          </p>
-          <p className="text-sm text-gray-600">
-            Last Sync: {project.googleDriveSync?.lastSyncedAt?.toLocaleString() || "Never"}
-          </p>
-          <div className="flex gap-2 mt-4">
-            <form action={connectSyncAction}>
-              <Button type="submit" variant="outline">Connect</Button>
-            </form>
-            <form action={syncNowAction}>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Sync Now</Button>
-            </form>
+    <div className="p-8" style={{ background: "#0c0c14", minHeight: "100%" }}>
+      <div className="mb-8">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${statusColor}15`, color: statusColor }}>{project.status.replace(/_/g, " ")}</span>
+              {project.genre && <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "#1a1a2e", color: "#9898b8", border: "1px solid #2a2a45" }}>{project.genre}</span>}
+            </div>
+            <h1 className="text-4xl font-bold mb-2" style={{ color: "#f0f0f8" }}>{project.title}</h1>
+            {project.synopsis && <p className="max-w-2xl text-sm leading-relaxed" style={{ color: "#9898b8" }}>{project.synopsis}</p>}
+            <p className="text-xs mt-2" style={{ color: "#5a5a7a" }}>Updated {formatDistanceToNow(project.updatedAt, { addSuffix: true })}</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link href={`/dashboard/projects/${project.id}/settings`} className="p-2 rounded-xl" style={{ background: "#1a1a2e", color: "#9898b8", border: "1px solid #2a2a45" }}><Settings size={16} /></Link>
+            {firstScene && (
+              <Link href={`/dashboard/projects/${project.id}/write/${firstScene.id}`} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold" style={{ background: "#f59e0b", color: "#0c0c14" }}>
+                <Flame size={16} />Continue Writing
+              </Link>
+            )}
           </div>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h2 className="text-lg font-semibold text-gray-900">Style Profile</h2>
-          <form action={saveStyleAction} className="space-y-3 mt-3">
-            <select name="pov" defaultValue={project.styleProfile?.pov || "THIRD_LIMITED"} className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-              <option value="FIRST">First</option>
-              <option value="SECOND">Second</option>
-              <option value="THIRD_LIMITED">Third Limited</option>
-              <option value="THIRD_OMNISCIENT">Third Omniscient</option>
-              <option value="MULTIPLE">Multiple</option>
-            </select>
-            <select name="tense" defaultValue={project.styleProfile?.tense || "PAST"} className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-              <option value="PAST">Past</option>
-              <option value="PRESENT">Present</option>
-              <option value="MIXED">Mixed</option>
-            </select>
-            <select name="formality" defaultValue={project.styleProfile?.formality || "LITERARY"} className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-              <option value="LITERARY">Literary</option>
-              <option value="COMMERCIAL">Commercial</option>
-              <option value="GENRE">Genre</option>
-              <option value="EXPERIMENTAL">Experimental</option>
-            </select>
-            <textarea
-              name="customRules"
-              defaultValue={Array.isArray(project.styleProfile?.customRules)
-                ? (project.styleProfile?.customRules as string[]).join("\n")
-                : ""}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              rows={3}
-              placeholder="One style rule per line"
-            />
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Save Style Profile</Button>
-          </form>
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-gray-900">Outline (Chapters & Scenes)</h2>
-        </div>
-
-        <form action={addChapterAction} className="flex gap-3">
-          <input
-            name="title"
-            className="flex-1 border border-gray-300 rounded px-3 py-2"
-            placeholder="New chapter title"
-            required
-          />
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Add Chapter</Button>
-        </form>
-
-        {project.chapters.length === 0 ? (
-          <p className="text-gray-600">No chapters yet. Add your first chapter to begin writing.</p>
-        ) : (
-          <div className="space-y-4">
-            {project.chapters.map((chapter) => (
-              <div key={chapter.id} className="border border-gray-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">{chapter.title}</h3>
-                <div className="space-y-2 mb-4">
-                  {chapter.scenes.length === 0 ? (
-                    <p className="text-sm text-gray-500">No scenes yet.</p>
-                  ) : (
-                    chapter.scenes.map((scene) => (
-                      <Link
-                        key={scene.id}
-                        href={`/dashboard/projects/${projectId}/scenes/${scene.id}`}
-                        className="block border border-gray-100 rounded p-3 hover:bg-gray-50"
-                      >
-                        <div className="font-medium text-gray-900">{scene.title}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Words: {scene.document?.wordCount ?? 0}
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
-
-                <form action={addSceneAction} className="flex gap-3">
-                  <input type="hidden" name="chapterId" value={chapter.id} />
-                  <input
-                    name="title"
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
-                    placeholder="New scene title"
-                    required
-                  />
-                  <Button type="submit" variant="outline">Add Scene</Button>
-                </form>
-              </div>
-            ))}
+        {project.targetWordCount && (
+          <div className="mt-6 max-w-md">
+            <div className="flex justify-between text-xs mb-2" style={{ color: "#9898b8" }}>
+              <span>{totalWords.toLocaleString()} words</span>
+              <span>Target: {project.targetWordCount.toLocaleString()}</span>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: "#1a1a2e" }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.min(100, (totalWords / project.targetWordCount) * 100)}%`, background: "linear-gradient(90deg, #f59e0b, #d97706)" }} />
+            </div>
           </div>
         )}
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {navCards.map((card) => (
+          <Link key={card.href} href={card.href} className="rounded-2xl p-5 flex flex-col transition-all group" style={{ background: "#1a1a2e", border: "1px solid #2a2a45" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.border = `1px solid ${card.color}40`; (e.currentTarget as HTMLAnchorElement).style.background = `${card.color}08`; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.border = "1px solid #2a2a45"; (e.currentTarget as HTMLAnchorElement).style.background = "#1a1a2e"; }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${card.color}15` }}>
+                <span style={{ color: card.color }}>{card.icon}</span>
+              </div>
+              <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: card.color }} />
+            </div>
+            <h3 className="text-base font-bold mb-1" style={{ color: "#f0f0f8" }}>{card.label}</h3>
+            <p className="text-xs mb-3" style={{ color: "#9898b8" }}>{card.desc}</p>
+            <div className="mt-auto">
+              <span className="text-xs font-semibold" style={{ color: card.color }}>{card.stat}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {project.characters.length > 0 && (
+        <div className="rounded-2xl p-6" style={{ background: "#13131f", border: "1px solid #2a2a45" }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold" style={{ color: "#f0f0f8" }}>Characters</h2>
+            <Link href={`/dashboard/projects/${project.id}/characters`} className="text-xs flex items-center gap-1" style={{ color: "#9898b8" }}>View all <ArrowRight size={12} /></Link>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            {project.characters.slice(0, 8).map((char) => (
+              <Link key={char.id} href={`/dashboard/projects/${project.id}/characters`} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "#1a1a2e", border: "1px solid #2a2a45" }}>
+                <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ background: char.avatarColor ?? "#35354a" }} />
+                <div>
+                  <p className="text-xs font-medium" style={{ color: "#f0f0f8" }}>{char.name}</p>
+                  <p className="text-xs" style={{ color: "#5a5a7a" }}>{char.role.replace(/_/g, " ")}</p>
+                </div>
+              </Link>
+            ))}
+            <Link href={`/dashboard/projects/${project.id}/characters`} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "transparent", border: "1px dashed #2a2a45", color: "#5a5a7a" }}>
+              <Plus size={14} /><span className="text-xs">Add</span>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

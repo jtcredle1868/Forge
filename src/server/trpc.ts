@@ -1,6 +1,7 @@
 // src/server/trpc.ts
 import { TRPCError, initTRPC } from "@trpc/server";
 import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/server/db";
 import type { Session } from "@/lib/session";
 
 interface CreateTRPCContextOptions {
@@ -14,6 +15,7 @@ export const createTRPCContext = async (
   return {
     session: opts.session,
     user,
+    db,
   };
 };
 
@@ -22,6 +24,7 @@ type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 const t = initTRPC.context<Context>().create();
 
 export const createTRPCRouter = t.router;
+export const router = t.router;
 export const createCallerFactory = t.createCallerFactory;
 
 export const publicProcedure = t.procedure;
@@ -38,6 +41,7 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
       ...ctx,
       user: ctx.user,
       session: ctx.session,
+      db: ctx.db,
     },
   });
 });

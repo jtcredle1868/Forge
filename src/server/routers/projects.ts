@@ -39,12 +39,25 @@ export const projectsRouter = createTRPCRouter({
               scenes: {
                 include: {
                   document: true,
+                  emotionalScore: true,
+                  appearances: {
+                    include: {
+                      character: {
+                        select: { id: true, name: true, avatarColor: true, role: true },
+                      },
+                    },
+                  },
                 },
+                orderBy: { orderIndex: "asc" },
               },
             },
             orderBy: { orderIndex: "asc" },
           },
           styleProfile: true,
+          characters: {
+            select: { id: true, name: true, role: true, avatarColor: true },
+            orderBy: [{ role: "asc" }, { name: "asc" }],
+          },
         },
       });
 
