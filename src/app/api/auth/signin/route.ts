@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { createSession } from "@/lib/session";
 
@@ -13,20 +14,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user
-    const user = await db.user.findUnique({
-      where: { email },
-    });
+    const user = await db.user.findUnique({ where: { email } });
 
-    if (!user || user.passwordHash !== password) {
-      // In production, use constant-time comparison and bcrypt
+    // Use bcrypt compare — falls back gracefully if hash is legacy plain-text
+    const hash = user?.passwordHash ?? "";
+    const valid = user
+      ? await bcrypt.compare(password, hash).catch(() => hash === password)
+      : false;
+
+    if (!user || !valid) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "Invalid email or password" },
         { status: 401 }
       );
     }
 
-    // Create session
     await createSession(user);
 
     return NextResponse.json({
